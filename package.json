@@ -1,0 +1,13 @@
+{
+  "name": "webdav-player",
+  "version": "1.0.0",
+  "description": "A WebDAV media player for MP3 and MP4",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "webdav": "^5.7.1"
+  }
+}
