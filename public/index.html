@@ -39,16 +39,14 @@
       .app { max-width: 1080px; }
     }
 
-    /* ===== 高光导航栏 ===== */
+    /* ===== 高光导航栏（通栏，紧贴浏览器左右端） ===== */
     .navbar {
-      margin: 0;
-      padding: 0;
-      text-align: center;
+      position: sticky; top: 0; z-index: 10;
+      width: 100%;
       background: #6b89b8;
       background-image: linear-gradient(to bottom, #8fa6cc 0%, #6b89b8 8%, #5874a6 50%, #4a6494 51%, #3d5581 100%);
       border-bottom: 1px solid #31456b;
       box-shadow: 0 2px 4px rgba(0,0,0,0.35);
-      position: relative;
     }
     .navbar::after {
       content: "";
@@ -57,12 +55,23 @@
       border-radius: 0 0 50% 50% / 0 0 8px 8px;
       pointer-events: none;
     }
+    .nav-inner {
+      position: relative;
+      max-width: 480px; margin: 0 auto;
+    }
+    @media (min-width: 700px) {
+      .nav-inner { max-width: 860px; }
+    }
+    @media (min-width: 1100px) {
+      .nav-inner { max-width: 1080px; }
+    }
     .navbar .nav-title {
       position: relative; z-index: 2;
       font-size: 20px; font-weight: 700;
       color: #fff;
       text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
       padding: 11px 10px;
+      text-align: center;
     }
     .nav-btn {
       position: absolute; top: 7px; z-index: 3;
@@ -273,11 +282,13 @@
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="navbar">
+  <div class="navbar">
+    <div class="nav-inner">
       <div class="nav-title" id="navTitle">服务器</div>
       <button class="nav-btn right" id="headerAction"></button>
     </div>
+  </div>
+  <div class="app">
     <div id="view"></div>
   </div>
   <div class="toast" id="toast"></div>
