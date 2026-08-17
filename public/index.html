@@ -565,7 +565,7 @@
         <div class="now-playing">正在播放：<strong>${esc(name)}</strong></div>
         <div class="player-wrap${isV ? ' video-wrap' : ''}">
           ${isV
-            ? `<video controls autoplay src="${url}"></video>`
+            ? `<video controls autoplay poster="/video-poster.png" src="${url}"></video>`
             : `<audio controls autoplay src="${url}"></audio>`}
         </div>
       `;

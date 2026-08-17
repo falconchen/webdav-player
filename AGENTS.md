@@ -15,6 +15,8 @@
 |------|------|
 | `server.js` | Express 后端：服务器配置 CRUD + WebDAV 代理（列表/流式播放） |
 | `public/index.html` | 单页前端：服务器列表 / 新建 / 文件列表 / 播放器 |
+| `public/video-poster.png` | 视频默认封面（16:9），`<video>` 的 poster 属性引用 |
+| `scripts/gen-poster.py` | 重新生成默认封面（依赖 python3 + Pillow） |
 | `servers.json` | 运行时生成的用户配置存储（**已 gitignore，勿提交**） |
 | `package.json` | 依赖与启动脚本 |
 
@@ -31,6 +33,7 @@
 3. **前端无构建**：直接改 `public/index.html`，刷新即可生效，无需打包。
 4. **新增 API**：遵循现有 `/api/servers/:id/...` 风格，返回 JSON，错误用 `{ error: string }` + 4xx/5xx 状态码。
 5. **媒体类型**：音频/视频扩展名判断集中在 `public/index.html` 的 `AUDIO_EXT` / `VIDEO_EXT`，新增格式在此维护。
+6. **视频默认封面**：`public/video-poster.png` 由 `<video poster>` 引用；如需重新生成，运行 `python3 scripts/gen-poster.py`（依赖 python3 + Pillow）。封面为静态资源，不依赖 ffmpeg。
 
 ## 已知限制 / 待办
 
