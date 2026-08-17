@@ -351,9 +351,53 @@
       return data;
     }
 
-    // ---------- View: server list ----------
+    // ===== 路由（History API） =====
+    // 编码 WebDAV 路径段（保留 / 作为分隔，其余 URL 编码）
+    function encodePath(p) {
+      return p.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+    }
+    function decodePath(seg) {
+      return '/' + (seg || '').split('/').filter(Boolean).map(decodeURIComponent).join('/');
+    }
+
+    // 解析当前 location.pathname 为路由
+    function parseRoute() {
+      const parts = window.location.pathname.split('/').filter(Boolean); // 去掉首尾空段
+      if (parts.length === 0) return { name: 'home' };
+      if (parts[0] === 'new') return { name: 'new' };
+      if ((parts[0] === 'browse' || parts[0] === 'play') && parts.length >= 2) {
+        return {
+          name: parts[0], // 'browse' | 'play'
+          id: parts[1],
+          path: decodePath(parts.slice(2).join('/')),
+        };
+      }
+      return { name: 'home' };
+    }
+
+    // 跳转并写入历史记录
+    function navigate(pathname) {
+      if (window.location.pathname !== pathname) {
+        history.pushState({}, '', pathname);
+      }
+      render();
+    }
+
+    // 根据当前路由渲染
+    async function render() {
+      const route = parseRoute();
+      if (route.name === 'new') { showNewServer(); return; }
+      if (route.name === 'browse') { await renderFileList(route.id, route.path); return; }
+      if (route.name === 'play') { playFile(route.id, route.path); return; }
+      await renderServerList();
+    }
+
+    // 浏览器前进/后退
+    window.addEventListener('popstate', render);
+
+    // ===== View: server list =====
     async function renderServerList() {
-      setNav('服务器', '＋ 新建', showNewServer);
+      setNav('服务器', '＋ 新建', () => navigate('/new'));
       let servers;
       try { servers = await api('/api/servers'); }
       catch (e) {
@@ -364,12 +408,12 @@
       if (!servers.length) {
         $view.innerHTML = `
           <div class="empty"><span class="big">🎵</span>还没有服务器<br>点击右上角「＋ 新建」开始</div>
-          <div class="btn-holder"><button class="btn block" onclick="showNewServer()">＋ 新建服务器</button></div>`;
+          <div class="btn-holder"><button class="btn block" onclick="navigate('/new')">＋ 新建服务器</button></div>`;
         return;
       }
 
       const cells = servers.map(s => `
-        <div class="cell" onclick="openServer('${s.id}')">
+        <div class="cell" onclick="navigate('/browse/${encodeURIComponent(s.id)}/')">
           <div class="row">
             <div class="icon-badge icon-blue"><span class="emoji">📦</span></div>
             <div class="grow">
@@ -389,9 +433,9 @@
       catch (e) { toast(e.message); }
     }
 
-    // ---------- View: new server ----------
+    // ===== View: new server =====
     function showNewServer() {
-      setNav('新建服务器', '← 返回', renderServerList, 'gray');
+      setNav('新建服务器', '← 返回', () => navigate('/'), 'gray');
       $view.innerHTML = `
         <form onsubmit="submitNewServer(event)">
           <div class="group">
@@ -435,34 +479,24 @@
       try {
         await api('/api/servers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         toast('已添加服务器');
-        renderServerList();
+        navigate('/');
       } catch (err) { toast(err.message); }
     }
 
-    // ---------- View: file list ----------
-    let currentServerId = null;
-    let currentPath = '/';
-
-    async function openServer(id) {
-      currentServerId = id;
-      currentPath = '/';
-      await renderFileList();
-    }
-
-    async function renderFileList() {
-      setNav('文件', '← 服务器', renderServerList, 'gray');
-      const path = currentPath;
+    // ===== View: file list =====
+    async function renderFileList(serverId, path) {
+      setNav('文件', '← 服务器', () => navigate('/'), 'gray');
       let data;
-      try { data = await api(`/api/servers/${currentServerId}/list?path=${encodeURIComponent(path)}`); }
+      try { data = await api(`/api/servers/${serverId}/list?path=${encodeURIComponent(path)}`); }
       catch (e) { $view.innerHTML = `<div class="empty"><span class="big">⚠️</span>${esc(e.message)}</div>`; return; }
 
       // breadcrumb
       const parts = path.split('/').filter(Boolean);
-      let crumb = '<a href="#" onclick="event.preventDefault(); goDir(\'/\')">根目录</a>';
+      let crumb = '<a href="#" onclick="event.preventDefault(); navigate(\'/browse/' + serverId + '/\')">根目录</a>';
       let acc = '';
       parts.forEach((p, i) => {
         acc += '/' + p;
-        crumb += '<span class="sep">/</span> <a href="#" onclick="event.preventDefault(); goDir(\'' + acc + '\')">' + esc(p) + '</a>';
+        crumb += '<span class="sep">/</span> <a href="#" onclick="event.preventDefault(); navigate(\'/browse/' + serverId + '/' + encodePath(acc) + '\')">' + esc(p) + '</a>';
       });
       const crumbHtml = `<div class="crumb-row">${crumb}</div>`;
 
@@ -484,7 +518,12 @@
         const media = isMedia(it.name);
         const icon = isDir ? '📁' : isAudio(it.name) ? '🎵' : isVideo(it.name) ? '🎬' : '📄';
         const iconCls = isDir ? 'icon-green' : isVideo(it.name) ? 'icon-orange' : isAudio(it.name) ? 'icon-dark' : 'icon-gray';
-        const click = isDir ? `onclick="goDir('${escAttr(it.path)}')"` : media ? `onclick="playFile('${escAttr(it.path)}', '${escAttr(it.name)}')"` : '';
+        let click = '';
+        if (isDir) {
+          click = `onclick="navigate('/browse/${serverId}/${encodePath(it.path)}')"`;
+        } else if (media) {
+          click = `onclick="navigate('/play/${serverId}/${encodePath(it.path)}')"`;
+        }
         const dateStr = it.mtime ? fmtDate(it.mtime) : '';
         const metaText = `${isDir ? '目录' : fmtSize(it.size)}${dateStr ? ' · ' + dateStr : ''}${(!isDir && media) ? ' ▶' : ''}`;
         return `
@@ -508,16 +547,13 @@
       $view.innerHTML = html;
     }
 
-    function goDir(p) {
-      currentPath = p;
-      renderFileList();
-    }
-
-    // ---------- View: player ----------
-    function playFile(filePath, name) {
-      const url = `/api/servers/${currentServerId}/stream?path=${encodeURIComponent(filePath)}`;
+    // ===== View: player =====
+    function playFile(serverId, filePath) {
+      const url = `/api/servers/${serverId}/stream?path=${encodeURIComponent(filePath)}`;
+      const name = filePath.split('/').pop();
       const isV = isVideo(name);
-      setNav('播放', '← 返回', renderFileList, 'gray');
+      const backTo = '/browse/' + serverId + '/' + encodePath(filePath.slice(0, filePath.lastIndexOf('/')));
+      setNav('播放', '← 返回', () => navigate(backTo), 'gray');
       $view.innerHTML = `
         <div class="now-playing">正在播放：<strong>${esc(name)}</strong></div>
         <div class="player-wrap">
@@ -528,7 +564,7 @@
       `;
     }
 
-    // ---------- helpers ----------
+    // ===== helpers =====
     function esc(s) {
       return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
@@ -537,7 +573,7 @@
     }
 
     // init
-    renderServerList();
+    render();
   </script>
 </body>
 </html>

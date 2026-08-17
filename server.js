@@ -144,3 +144,8 @@ app.get('/api/servers/:id/stream', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`WebDAV Player running at http://localhost:${PORT}`);
 });
+
+// SPA catch-all：非 /api 的前端路由回退到 index.html，支持浏览器历史/前进后退
+app.get(/^(?!\/api\/).*/, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
