@@ -83,7 +83,8 @@ app.get('/api/servers/:id/list', async (req, res) => {
       type: it.type, // 'file' | 'directory'
       size: it.size || 0,
       mtime: it.lastmod || null,
-      path: it.filename,
+      // 规范化路径：确保以 / 开头且不含重复斜杠
+      path: ('/' + it.filename).replace(/\/{2,}/g, '/'),
     }));
     res.json({ path: dirPath, items: result });
   } catch (e) {
@@ -138,6 +139,50 @@ app.get('/api/servers/:id/stream', async (req, res) => {
     stream.pipe(res);
   } catch (e) {
     res.status(502).json({ error: '无法读取文件: ' + (e.message || e) });
+  }
+});
+
+// ---------- API: subtitle (SRT/VTT proxy for <track>) ----------
+// SRT 时间戳 00:00:01,000 --> 00:00:02,500 转为 VTT 的 00:00:01.000 --> 00:00:02.500
+function srtToVtt(text) {
+  let t = String(text).replace(/^\uFEFF/, '');
+  // 已是 WebVTT 则直接返回
+  if (/^\s*WEBVTT\b/i.test(t)) return t;
+  // 去掉可能残留的序号块头、统一换行
+  t = t.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // 时间戳逗号转点号
+  t = t.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+  return 'WEBVTT\n\n' + t.trim() + '\n';
+}
+
+app.get('/api/servers/:id/subtitle', async (req, res) => {
+  const server = loadServers().find((s) => s.id === req.params.id);
+  if (!server) return res.status(404).json({ error: '服务器不存在' });
+  const filePath = req.query.path;
+  if (!filePath) return res.status(400).json({ error: '缺少文件路径' });
+  const ext = path.extname(filePath).toLowerCase();
+  if (!['.srt', '.vtt'].includes(ext)) {
+    return res.status(415).json({ error: '不支持的字幕格式: ' + (ext || '未知') });
+  }
+
+  try {
+    const client = getClient(server);
+    const chunks = [];
+    const stream = client.createReadStream(filePath);
+    stream.on('error', (err) => {
+      if (!res.headersSent) res.status(502).json({ error: '读取字幕失败: ' + err.message });
+      else res.destroy();
+    });
+    stream.on('data', (c) => chunks.push(c));
+    stream.on('end', () => {
+      let text = Buffer.concat(chunks).toString('utf8');
+      if (ext === '.srt') text = srtToVtt(text);
+      res.set('Content-Type', 'text/vtt; charset=utf-8');
+      res.set('Cache-Control', 'no-cache');
+      res.send(text);
+    });
+  } catch (e) {
+    res.status(502).json({ error: '无法读取字幕: ' + (e.message || e) });
   }
 });
 

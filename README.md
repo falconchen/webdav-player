@@ -8,6 +8,7 @@
 - **新建服务器**：配置标题、主机、用户名、密码、端口（可选）、路径（可选）、HTTPS
 - **文件列表**：进入服务器后浏览目录与文件，带面包屑导航
 - **媒体播放**：点击音频/视频文件即播放，支持 HTTP Range 断点续播与进度拖动
+- **视频字幕**：自动识别视频同目录下的 `.srt` / `.vtt` 字幕文件，支持多语言切换与关闭（无字幕时隐藏）
 - **视频默认封面**：视频播放前/加载期间显示内置默认封面（16:9），无需 ffmpeg
 
 ## 架构
@@ -100,6 +101,7 @@ webdav-player/
 | DELETE | `/api/servers/:id` | 删除服务器 |
 | GET | `/api/servers/:id/list?path=/` | 列出目录内容 |
 | GET | `/api/servers/:id/stream?path=/x.mp4` | 流式播放文件（支持 Range） |
+| GET | `/api/servers/:id/subtitle?path=/x.srt` | 字幕代理（SRT 自动转 WebVTT） |
 
 ## 安全说明
 

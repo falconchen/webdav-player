@@ -259,6 +259,29 @@
     video, audio { width: 100%; display: block; }
     video { background: #000; }
 
+    /* ===== 字幕选择 ===== */
+    .subtitle-bar {
+      margin: 10px 14px 0;
+      position: relative;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .subtitle-bar .sub-hint { font-size: 12px; color: #8e8e93; }
+    .sub-menu {
+      position: absolute; top: 100%; left: 0; z-index: 20;
+      margin-top: 6px; min-width: 170px;
+      background: #fff; border-radius: 10px; overflow: hidden;
+      box-shadow: inset 0 0 1px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.45);
+    }
+    .sub-item {
+      padding: 11px 14px; font-size: 14px; cursor: pointer;
+      border-bottom: 1px solid #e0e0e0; background: #fdfdfd;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sub-item:last-child { border-bottom: none; }
+    .sub-item:hover { background: #dce9fb; }
+    .sub-item.active { background: #dce9fb; font-weight: 600; color: #1f5db8; }
+    .sub-item .check { width: 16px; text-align: center; color: #1f5db8; }
+
     /* ===== Toast（拟物通知） ===== */
     .toast {
       position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
@@ -555,6 +578,38 @@
     }
 
     // ===== View: player =====
+    const SUBTITLE_EXT = ['srt', 'vtt'];
+    const LANG_LABELS = {
+      'zh': '中文', 'zh-cn': '中文（简体）', 'zh-hans': '中文（简体）',
+      'zh-tw': '中文（繁体）', 'zh-hant': '中文（繁体）', 'zh-hk': '中文（繁体）',
+      'en': 'English', 'en-us': 'English', 'en-gb': 'English (UK)',
+      'ja': '日本語', 'ko': '한국어', 'fr': 'Français', 'de': 'Deutsch',
+      'es': 'Español', 'ru': 'Русский', 'it': 'Italiano', 'pt': 'Português',
+      'vi': 'Tiếng Việt', 'th': 'ไทย', 'ar': 'العربية', 'hi': 'हिन्दी',
+    };
+    // 从字幕文件名猜测语言码：如 movie.zh-CN.srt → zh-CN
+    function guessSubLang(name) {
+      const base = name.replace(/\.[^.]+$/, ''); // 去掉扩展名
+      const i = base.lastIndexOf('.');
+      if (i === -1) return null;
+      const code = base.slice(i + 1);
+      return /^[a-z]{2,3}(-[a-z]{2,4})?$/i.test(code) ? code.toLowerCase() : null;
+    }
+    function subLabel(name) {
+      const lang = guessSubLang(name);
+      if (lang) {
+        const key = lang.toLowerCase();
+        if (LANG_LABELS[key]) return LANG_LABELS[key];
+        const base = lang.split('-')[0];
+        if (LANG_LABELS[base]) return LANG_LABELS[base] + ' (' + lang + ')';
+        return lang.toUpperCase();
+      }
+      return name.replace(/\.[^.]+$/, '');
+    }
+
+    let _subTracks = [];   // 当前播放器已加载的 <track> 元素
+    let _activeSub = -1;   // 当前选中的字幕索引（-1 = 关闭）
+
     function playFile(serverId, filePath) {
       const url = `/api/servers/${serverId}/stream?path=${encodeURIComponent(filePath)}`;
       const name = filePath.split('/').pop();
@@ -565,10 +620,110 @@
         <div class="now-playing">正在播放：<strong>${esc(name)}</strong></div>
         <div class="player-wrap${isV ? ' video-wrap' : ''}">
           ${isV
-            ? `<video controls autoplay poster="/video-poster.png" src="${url}"></video>`
+            ? `<video id="playerVideo" controls autoplay poster="/video-poster.png" src="${url}"></video>`
             : `<audio controls autoplay src="${url}"></audio>`}
         </div>
+        <div class="subtitle-bar" id="subtitleBar"></div>
       `;
+      _subTracks = [];
+      _activeSub = -1;
+      if (isV) loadSubtitles(serverId, filePath);
+    }
+
+    // 扫描视频同目录的字幕文件，动态添加 <track> 与字幕菜单
+    async function loadSubtitles(serverId, filePath) {
+      const dir = filePath.slice(0, filePath.lastIndexOf('/')) || '/';
+      const videoBase = filePath.split('/').pop().replace(/\.[^.]+$/, '').toLowerCase();
+      let data;
+      try {
+        data = await api(`/api/servers/${serverId}/list?path=${encodeURIComponent(dir)}`);
+      } catch (e) { return; }
+
+      const subs = (data.items || [])
+        .filter(i => i.type === 'file' && SUBTITLE_EXT.includes(ext(i.name)));
+
+      if (!subs.length) {
+        const bar = document.getElementById('subtitleBar');
+        if (bar) bar.innerHTML = `<span class="sub-hint">无字幕</span>`;
+        return;
+      }
+
+      // 与视频同主名的字幕排前面
+      subs.sort((a, b) => {
+        const am = a.name.replace(/\.[^.]+$/, '').toLowerCase() === videoBase ? 0 : 1;
+        const bm = b.name.replace(/\.[^.]+$/, '').toLowerCase() === videoBase ? 0 : 1;
+        return am - bm;
+      });
+
+      const video = document.getElementById('playerVideo');
+      if (!video) return;
+
+      _subTracks = subs.map(s => {
+        const tr = document.createElement('track');
+        tr.kind = 'subtitles';
+        const lang = guessSubLang(s.name);
+        tr.srclang = lang || 'und';
+        tr.label = subLabel(s.name);
+        tr.src = `/api/servers/${serverId}/subtitle?path=${encodeURIComponent(s.path)}`;
+        tr.addEventListener('load', () => {
+          // 若加载完成时该轨正被选中，则显示
+          if (_subTracks.indexOf(tr) === _activeSub && video.textTracks) {
+            for (let i = 0; i < video.textTracks.length; i++) {
+              video.textTracks[i].mode = (i === _activeSub) ? 'showing' : 'disabled';
+            }
+          }
+        });
+        video.appendChild(tr);
+        return tr;
+      });
+
+      const items = [{ label: '关闭字幕', value: -1 }].concat(
+        subs.map((s, i) => ({ label: subLabel(s.name), value: i }))
+      );
+      const bar = document.getElementById('subtitleBar');
+      if (bar) {
+        bar.innerHTML = `
+          <button class="btn small gray" onclick="toggleSubMenu(event)">字幕</button>
+          <div class="sub-menu hidden" id="subMenu">
+            ${items.map(it => `
+              <div class="sub-item" data-value="${it.value}" onclick="pickSubtitle(${it.value})">
+                <span class="check"></span>${esc(it.label)}
+              </div>`).join('')}
+          </div>`;
+      }
+      renderSubMenuCheck();
+      // 点击空白处关闭菜单
+      document.addEventListener('click', closeSubMenu);
+    }
+
+    function toggleSubMenu(e) {
+      if (e) e.stopPropagation();
+      const m = document.getElementById('subMenu');
+      if (m) m.classList.toggle('hidden');
+    }
+    function closeSubMenu(e) {
+      const m = document.getElementById('subMenu');
+      const bar = document.getElementById('subtitleBar');
+      if (m && bar && !bar.contains(e.target)) m.classList.add('hidden');
+    }
+    function renderSubMenuCheck() {
+      document.querySelectorAll('#subMenu .sub-item').forEach(el => {
+        const on = +el.dataset.value === _activeSub;
+        el.classList.toggle('active', on);
+        el.querySelector('.check').textContent = on ? '✓' : '';
+      });
+    }
+    function pickSubtitle(idx) {
+      _activeSub = idx;
+      const video = document.getElementById('playerVideo');
+      if (video && video.textTracks) {
+        for (let i = 0; i < video.textTracks.length; i++) {
+          video.textTracks[i].mode = (i === idx) ? 'showing' : 'disabled';
+        }
+      }
+      renderSubMenuCheck();
+      const m = document.getElementById('subMenu');
+      if (m) m.classList.add('hidden');
     }
 
     // ===== helpers =====

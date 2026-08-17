@@ -26,6 +26,7 @@
 
 - **代理式**：浏览器 → 本服务 → 用户 WebDAV 服务器，数据经本服务中转
 - **流式播放**：`/api/servers/:id/stream` 通过 `webdav` 的 `createReadStream` 转发，支持 HTTP Range（206），实现进度拖动与断点续播
+- **字幕代理**：`/api/servers/:id/subtitle` 代理 WebDAV 上的 `.srt`/`.vtt`，SRT 转 WebVTT 后供 `<track>` 使用；前端自动扫描视频同目录字幕文件（语言从文件名推断，如 `movie.zh-CN.srt`）
 - **配置存储**：`loadServers()` / `saveServers()` 读写 `servers.json`，密码明文存储
 
 ## 开发约定
@@ -37,6 +38,7 @@
 5. **媒体类型**：音频/视频扩展名判断集中在 `public/index.html` 的 `AUDIO_EXT` / `VIDEO_EXT`，新增格式在此维护。
 6. **视频默认封面**：`public/video-poster.png` 由 `<video poster>` 引用；如需重新生成，运行 `python3 scripts/gen-poster.py`（依赖 python3 + Pillow）。封面为静态资源，不依赖 ffmpeg。
 7. **Docker 构建**：`docker compose up -d --build`；容器内 `DATA_FILE=/app/data/servers.json`，宿主机数据在 `./data/`（已 gitignore）。修改 `server.js`/`public/` 后需重建镜像。
+8. **字幕约定**：字幕文件需与视频同目录，命名 `视频名.语言码.srt`（如 `movie.zh-CN.srt`、`movie.en.vtt`），语言码映射在 `public/index.html` 的 `LANG_LABELS`。仅 `.srt`/`.vtt` 受支持。
 
 ## 已知限制 / 待办
 
