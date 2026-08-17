@@ -5,7 +5,7 @@ const { createClient } = require('webdav');
 
 const app = express();
 const PORT = process.env.PORT || 3100;
-const DATA_FILE = path.join(__dirname, 'servers.json');
+const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'servers.json');
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));

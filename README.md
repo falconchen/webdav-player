@@ -38,13 +38,54 @@ PORT=8080 npm start
 
 启动后访问：<http://localhost:3100>
 
+## Docker 部署
+
+### 方式一：docker compose（推荐）
+
+```bash
+# 构建并启动（后台运行）
+docker compose up -d --build
+
+# 查看日志
+docker compose logs -f
+
+# 停止
+docker compose down
+```
+
+- 默认映射宿主机 **3100** 端口，访问 <http://localhost:3100>
+- 服务器配置持久化在宿主机 `./data/servers.json`（容器内 `/app/data`），重建容器不丢失
+- 容器以非 root 用户运行；`restart: unless-stopped` 保证开机/崩溃自启
+
+### 方式二：直接构建运行
+
+```bash
+docker build -t webdav-player .
+docker run -d --name webdav-player \
+  -p 3100:3100 \
+  -v "$PWD/data:/app/data" \
+  webdav-player
+```
+
+### 配置项
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `PORT` | `3100` | 服务端口 |
+| `DATA_FILE` | `/app/data/servers.json` | 服务器配置存储路径（本地默认为 `servers.json`） |
+
 ## 项目结构
 
 ```
 webdav-player/
 ├── server.js          # Express 后端：配置存储 + WebDAV 代理
+├── Dockerfile         # 多阶段构建镜像（node:22-alpine）
+├── docker-compose.yml # Compose 编排（端口、数据卷、自动重启）
 ├── public/
-│   └── index.html     # 单页前端（列表/新建/文件/播放器）
+│   ├── index.html     # 单页前端（列表/新建/文件/播放器）
+│   └── video-poster.png  # 视频默认封面
+├── scripts/
+│   └── gen-poster.py  # 封面再生成脚本（python3 + Pillow）
 ├── package.json
 ├── servers.json       # 运行时生成：用户 WebDAV 配置（已 gitignore）
 └── .gitignore

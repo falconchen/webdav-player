@@ -1,0 +1,14 @@
+services:
+  webdav-player:
+    build: .
+    image: webdav-player:latest
+    container_name: webdav-player
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - PORT=3100
+      - DATA_FILE=/app/data/servers.json
+    volumes:
+      # 持久化 WebDAV 服务器配置（含凭据），存放在宿主机 ./data/
+      - ./data:/app/data
