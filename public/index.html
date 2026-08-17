@@ -249,6 +249,13 @@
       overflow: hidden;
       box-shadow: inset 0 0 8px rgba(0,0,0,0.8), 0 3px 6px rgba(0,0,0,0.4);
     }
+    /* 视频容器预置 16:9，避免加载完成后高度突变 */
+    .player-wrap.video-wrap {
+      aspect-ratio: 16 / 9;
+    }
+    .player-wrap.video-wrap video {
+      height: 100%; object-fit: contain;
+    }
     video, audio { width: 100%; display: block; }
     video { background: #000; }
 
@@ -556,7 +563,7 @@
       setNav('播放', '← 返回', () => navigate(backTo), 'gray');
       $view.innerHTML = `
         <div class="now-playing">正在播放：<strong>${esc(name)}</strong></div>
-        <div class="player-wrap">
+        <div class="player-wrap${isV ? ' video-wrap' : ''}">
           ${isV
             ? `<video controls autoplay src="${url}"></video>`
             : `<audio controls autoplay src="${url}"></audio>`}
