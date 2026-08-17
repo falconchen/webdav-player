@@ -27,6 +27,7 @@
 - **代理式**：浏览器 → 本服务 → 用户 WebDAV 服务器，数据经本服务中转
 - **流式播放**：`/api/servers/:id/stream` 通过 `webdav` 的 `createReadStream` 转发，支持 HTTP Range（206），实现进度拖动与断点续播
 - **字幕代理**：`/api/servers/:id/subtitle` 代理 WebDAV 上的 `.srt`/`.vtt`，SRT 转 WebVTT 后供 `<track>` 使用；前端自动扫描视频同目录字幕文件（语言从文件名推断，如 `movie.zh-CN.srt`）
+- **进度记忆**：播放进度存于浏览器 `localStorage`（key=`wdp:progress:<serverId>:<path>`），打开时自动恢复；文件时长变化 >5% 不恢复，看完自动清除
 - **配置存储**：`loadServers()` / `saveServers()` 读写 `servers.json`，密码明文存储
 
 ## 开发约定

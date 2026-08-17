@@ -621,13 +621,70 @@
         <div class="player-wrap${isV ? ' video-wrap' : ''}">
           ${isV
             ? `<video id="playerVideo" controls autoplay poster="/video-poster.png" src="${url}"></video>`
-            : `<audio controls autoplay src="${url}"></audio>`}
+            : `<audio id="playerAudio" controls autoplay src="${url}"></audio>`}
         </div>
         <div class="subtitle-bar" id="subtitleBar"></div>
       `;
       _subTracks = [];
       _activeSub = -1;
+      const media = isV ? document.getElementById('playerVideo') : document.getElementById('playerAudio');
+      if (media) setupProgressMemory(serverId, filePath, media);
       if (isV) loadSubtitles(serverId, filePath);
+    }
+
+    // ===== 播放进度记忆（localStorage，key = 服务器 + 文件路径） =====
+    function progressKey(serverId, filePath) {
+      return 'wdp:progress:' + serverId + ':' + filePath;
+    }
+    function saveProgress(serverId, filePath, media) {
+      if (!media || !isFinite(media.currentTime) || media.currentTime <= 0) return;
+      try {
+        const rec = { t: Date.now(), p: media.currentTime, d: media.duration || 0 };
+        localStorage.setItem(progressKey(serverId, filePath), JSON.stringify(rec));
+      } catch (e) { /* localStorage 不可用时忽略 */ }
+    }
+    function clearProgress(serverId, filePath) {
+      try { localStorage.removeItem(progressKey(serverId, filePath)); } catch (e) {}
+    }
+    // 秒 → 时钟格式（1:23:45 或 12:34）
+    function fmtClock(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+      const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+      return (h > 0 ? h + ':' : '') + mm + ':' + String(s).padStart(2, '0');
+    }
+    // 绑定记忆：节流保存 / 暂停保存 / 看完清除 / 打开时恢复
+    function setupProgressMemory(serverId, filePath, media) {
+      let lastSave = 0;
+      const throttledSave = () => {
+        const now = Date.now();
+        if (now - lastSave < 5000) return;
+        lastSave = now;
+        saveProgress(serverId, filePath, media);
+      };
+      media.addEventListener('timeupdate', throttledSave);
+      media.addEventListener('pause', () => saveProgress(serverId, filePath, media));
+      media.addEventListener('ended', () => clearProgress(serverId, filePath));
+      window.addEventListener('pagehide', () => saveProgress(serverId, filePath, media));
+
+      // 恢复进度
+      let restored = false;
+      media.addEventListener('loadedmetadata', () => {
+        if (restored) return;
+        let rec = null;
+        try { rec = JSON.parse(localStorage.getItem(progressKey(serverId, filePath)) || 'null'); } catch (e) {}
+        if (!rec || !isFinite(rec.p) || rec.p <= 5) return; // 太短不值得恢复
+        const dur = media.duration || rec.d || 0;
+        // 文件时长与上次差异过大（>5%）说明文件已变化，不恢复
+        if (dur > 0 && rec.d > 0 && Math.abs(rec.d - dur) / dur > 0.05) return;
+        // 距结尾 <5s 视为已看完：清除记录，不恢复
+        if (dur > 0 && rec.p > dur - 5) { clearProgress(serverId, filePath); return; }
+        restored = true;
+        const setPos = () => { try { media.currentTime = rec.p; } catch (e) {} };
+        if (media.readyState >= 1) setPos();
+        else media.addEventListener('loadeddata', setPos, { once: true });
+        toast('已恢复上次进度 ' + fmtClock(rec.p));
+      });
     }
 
     // 扫描视频同目录的字幕文件，动态添加 <track> 与字幕菜单
