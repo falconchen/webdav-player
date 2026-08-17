@@ -31,6 +31,13 @@
       padding-bottom: 30px;
       display: flex; flex-direction: column;
     }
+    /* 平板/桌面更宽容器 */
+    @media (min-width: 700px) {
+      .app { max-width: 860px; }
+    }
+    @media (min-width: 1100px) {
+      .app { max-width: 1080px; }
+    }
 
     /* ===== 高光导航栏 ===== */
     .navbar {
@@ -243,6 +250,30 @@
     .toast.show { opacity: 1; }
     .hidden { display: none !important; }
 
+    /* ===== 响应式：平板/桌面多列布局 ===== */
+    @media (min-width: 700px) {
+      /* 服务器列表网格 */
+      .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+      .group-grid .group { margin: 0; }
+      /* 文件列表：目录与文件分列 */
+      .file-columns {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 0 14px; align-items: start;
+      }
+      .file-columns .group { margin: 0; }
+      .file-columns .col-title {
+        font-size: 13px; font-weight: 600; color: #5b6f96;
+        margin: 14px 4px 6px; text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      }
+      .file-columns .col-title:first-child { margin-top: 0; }
+      /* 播放器居中限宽 */
+      .player-wrap { max-width: 720px; margin-left: auto; margin-right: auto; }
+      .now-playing { text-align: center; }
+      /* 表单分组限宽 */
+      form { max-width: 520px; margin-left: auto; margin-right: auto; }
+      .btn-holder form + .btn-holder { max-width: 520px; margin-left: auto; margin-right: auto; }
+    }
+
     /* iOS 6 滚动条 */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius: 3px; }
@@ -332,7 +363,7 @@
           </div>
         </div>
       `).join('');
-      $view.innerHTML = `<div class="group">${cells}</div>`;
+      $view.innerHTML = `<div class="group-grid">${cells}</div>`;
     }
 
     async function deleteServer(id) {
@@ -449,9 +480,18 @@
         </div>`;
       }).join('');
 
+      // 移动端单列；平板/桌面目录与文件分两栏
+      let listHtml = '';
       if (dirCells || fileCells) {
-        html += `<div class="group">${dirCells}${fileCells}</div>`;
+        if (dirCells) {
+          listHtml += `<div class="col-title">📁 目录</div><div class="group">${dirCells}</div>`;
+        }
+        if (fileCells) {
+          listHtml += `<div class="col-title">🎵 文件</div><div class="group">${fileCells}</div>`;
+        }
+        listHtml = `<div class="file-columns">${listHtml}</div>`;
       }
+      html += listHtml;
       $view.innerHTML = html;
     }
 
