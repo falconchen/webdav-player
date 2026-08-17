@@ -224,6 +224,12 @@
 
     /* ===== 文件行 ===== */
     .file-name { font-size: 16px; color: #000; font-weight: 400; }
+    .meta-sub { display: none; font-size: 12px; color: #8e8e93; margin-top: 2px; }
+    /* 小屏：信息放到标题下方 */
+    @media (max-width: 699px) {
+      .meta-sub { display: block; }
+      .right-meta { display: none; }
+    }
 
     /* ===== 播放器 ===== */
     .now-playing {
@@ -480,12 +486,16 @@
         const iconCls = isDir ? 'icon-green' : isVideo(it.name) ? 'icon-orange' : isAudio(it.name) ? 'icon-dark' : 'icon-gray';
         const click = isDir ? `onclick="goDir('${escAttr(it.path)}')"` : media ? `onclick="playFile('${escAttr(it.path)}', '${escAttr(it.name)}')"` : '';
         const dateStr = it.mtime ? fmtDate(it.mtime) : '';
+        const metaText = `${isDir ? '目录' : fmtSize(it.size)}${dateStr ? ' · ' + dateStr : ''}${(!isDir && media) ? ' ▶' : ''}`;
         return `
         <div class="cell" ${click}>
           <div class="row">
             <div class="icon-badge ${iconCls}"><span class="emoji">${icon}</span></div>
-            <div class="grow"><div class="file-name">${esc(it.name)}</div></div>
-            <div class="right-meta">${isDir ? '目录' : fmtSize(it.size)}${dateStr ? ' · ' + dateStr : ''}${(!isDir && media) ? ' ▶' : ''}</div>
+            <div class="grow">
+              <div class="file-name">${esc(it.name)}</div>
+              <div class="meta-sub">${metaText}</div>
+            </div>
+            <div class="right-meta">${metaText}</div>
           </div>
         </div>`;
       }).join('');
