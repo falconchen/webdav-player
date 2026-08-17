@@ -255,17 +255,10 @@
       /* 服务器列表网格 */
       .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
       .group-grid .group { margin: 0; }
-      /* 文件列表：目录与文件分列 */
+      /* 文件列表：单栏 flex，目录与文件混排 */
       .file-columns {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 0 14px; align-items: start;
+        display: flex; flex-direction: column; gap: 12px;
       }
-      .file-columns .group { margin: 0; }
-      .file-columns .col-title {
-        font-size: 13px; font-weight: 600; color: #5b6f96;
-        margin: 14px 4px 6px; text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-      }
-      .file-columns .col-title:first-child { margin-top: 0; }
       /* 播放器居中限宽 */
       .player-wrap { max-width: 720px; margin-left: auto; margin-right: auto; }
       .now-playing { text-align: center; }
@@ -325,6 +318,13 @@
       let i = 0;
       while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
       return n.toFixed(1) + ' ' + u[i];
+    }
+
+    function fmtDate(d) {
+      const t = new Date(d);
+      if (isNaN(t)) return '';
+      const p = n => String(n).padStart(2, '0');
+      return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())} ${p(t.getHours())}:${p(t.getMinutes())}`;
     }
 
     async function api(url, opts) {
@@ -455,41 +455,33 @@
       let html = crumbHtml;
       if (!dirs.length && !files.length) html += '<div class="empty">此目录为空</div>';
 
-      const dirCells = dirs.map(d => `
-        <div class="cell" onclick="goDir('${escAttr(d.path)}')">
-          <div class="row">
-            <div class="icon-badge icon-green"><span class="emoji">📁</span></div>
-            <div class="grow"><div class="file-name">${esc(d.name)}</div></div>
-            <div class="right-meta">目录 ›</div>
-          </div>
-        </div>
-      `).join('');
+      // 目录与文件合并为一栏，按创建时间从新到旧排序（无时间的排在最后）
+      const items = [...dirs, ...files].sort((a, b) => {
+        const ta = a.mtime ? new Date(a.mtime).getTime() : -Infinity;
+        const tb = b.mtime ? new Date(b.mtime).getTime() : -Infinity;
+        return tb - ta;
+      });
 
-      const fileCells = files.map(f => {
-        const media = isMedia(f.name);
-        const icon = isAudio(f.name) ? '🎵' : isVideo(f.name) ? '🎬' : '📄';
-        const iconCls = isVideo(f.name) ? 'icon-orange' : isAudio(f.name) ? 'icon-dark' : 'icon-gray';
-        const click = media ? `onclick="playFile('${escAttr(f.path)}', '${escAttr(f.name)}')"` : '';
+      const itemCells = items.map(it => {
+        const isDir = it.type === 'directory';
+        const media = isMedia(it.name);
+        const icon = isDir ? '📁' : isAudio(it.name) ? '🎵' : isVideo(it.name) ? '🎬' : '📄';
+        const iconCls = isDir ? 'icon-green' : isVideo(it.name) ? 'icon-orange' : isAudio(it.name) ? 'icon-dark' : 'icon-gray';
+        const click = isDir ? `onclick="goDir('${escAttr(it.path)}')"` : media ? `onclick="playFile('${escAttr(it.path)}', '${escAttr(it.name)}')"` : '';
+        const dateStr = it.mtime ? fmtDate(it.mtime) : '';
         return `
         <div class="cell" ${click}>
           <div class="row">
             <div class="icon-badge ${iconCls}"><span class="emoji">${icon}</span></div>
-            <div class="grow"><div class="file-name">${esc(f.name)}</div></div>
-            <div class="right-meta">${fmtSize(f.size)}${media ? ' · ▶' : ''}</div>
+            <div class="grow"><div class="file-name">${esc(it.name)}</div></div>
+            <div class="right-meta">${isDir ? '目录' : fmtSize(it.size)}${dateStr ? ' · ' + dateStr : ''}${(!isDir && media) ? ' ▶' : ''}</div>
           </div>
         </div>`;
       }).join('');
 
-      // 移动端单列；平板/桌面目录与文件分两栏
       let listHtml = '';
-      if (dirCells || fileCells) {
-        if (dirCells) {
-          listHtml += `<div class="col-title">📁 目录</div><div class="group">${dirCells}</div>`;
-        }
-        if (fileCells) {
-          listHtml += `<div class="col-title">🎵 文件</div><div class="group">${fileCells}</div>`;
-        }
-        listHtml = `<div class="file-columns">${listHtml}</div>`;
+      if (itemCells) {
+        listHtml = `<div class="file-columns"><div class="group">${itemCells}</div></div>`;
       }
       html += listHtml;
       $view.innerHTML = html;
