@@ -632,6 +632,8 @@
       const isV = isVideo(name);
       const backTo = '/browse/' + serverId + '/' + encodePath(filePath.slice(0, filePath.lastIndexOf('/')));
       setNav('播放', '← 返回', () => navigate(backTo), 'gray');
+      // 播放页右侧已有明确的「返回目录」，隐藏左侧后退按钮避免重复
+      $navBack.classList.add('hidden');
       $view.innerHTML = `
         <div class="now-playing">正在播放：<strong>${esc(name)}</strong></div>
         <div class="player-wrap${isV ? ' video-wrap' : ''}">
