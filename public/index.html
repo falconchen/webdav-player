@@ -135,7 +135,9 @@
     /* ===== 拟物按钮 ===== */
     .btn {
       display: inline-block;
+      font-family: inherit; /* 与 <a> 一致，消除按钮默认字体差异 */
       font-size: 15px; font-weight: 700;
+      line-height: 1.2; /* 统一行高，保证 <button> 与 <a> 高度一致 */
       color: #fff; text-shadow: 0 -1px 0 rgba(0,0,0,0.4);
       border: 1px solid #1e5aa8;
       border-radius: 8px;
@@ -282,6 +284,7 @@
     }
     .btn.download .ico {
       font-size: 12px;
+      line-height: 1.2;
       display: inline-block;
       vertical-align: middle;
       margin-right: 2px;
