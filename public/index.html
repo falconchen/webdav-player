@@ -12,9 +12,11 @@
     body {
       font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
       color: #333;
-      /* 项目背景图（下载自外部），暖杏色，固定覆盖 */
+      /* 项目背景图（下载自外部），暖杏色，固定覆盖，叠加遮罩降低亮度 */
       background-color: #f4d094; /* 与图片主色一致的兜底色 */
-      background-image: url('/bg.webp');
+      background-image:
+        linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.25)),
+        url('/bg.webp');
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
