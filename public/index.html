@@ -20,27 +20,19 @@
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
-      /* 视口固定布局：整体不滚动，中间内容区内部滚动 */
-      height: 100vh;
-      height: 100dvh;
-      overflow: hidden;
-      display: flex; flex-direction: column;
+    }
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% -10%, rgba(255,255,255,0.35), rgba(255,255,255,0) 60%);
     }
 
     .app {
       position: relative; z-index: 1;
-      width: 100%;
       max-width: 480px; margin: 0 auto;
-      flex: 1; min-height: 0; /* 占满导航栏以下空间 */
+      min-height: 100vh;
       padding: 18px 0 0;
       display: flex; flex-direction: column;
-    }
-    /* 中间内容区：占满剩余高度，内容过长时内部滚动 */
-    #view {
-      flex: 1; min-height: 0;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: 24px;
     }
     /* 平板/桌面更宽容器 */
     @media (min-width: 700px) {
@@ -50,11 +42,9 @@
       .app { max-width: 1080px; }
     }
 
-    /* ===== 高光导航栏（通栏，紧贴浏览器左右端，固定在视口顶部） ===== */
+    /* ===== 高光导航栏（通栏，紧贴浏览器左右端） ===== */
     .navbar {
-      position: relative; /* ::after 高光的定位上下文 */
-      flex-shrink: 0;
-      z-index: 10;
+      position: sticky; top: 0; z-index: 10;
       width: 100%;
       background: #6b89b8;
       background-image: linear-gradient(to bottom, #8fa6cc 0%, #6b89b8 8%, #5874a6 50%, #4a6494 51%, #3d5581 100%);
@@ -362,10 +352,9 @@
     .gallery-bottom .g-counter { font-size: 13px; color: #cfd3da; min-width: 70px; text-align: center; }
     .gallery-bottom .g-hint { font-size: 11px; color: #8f95a0; }
 
-    /* ===== 页脚（固定在视口底部） ===== */
+    /* ===== 页脚 ===== */
     .app-footer {
-      flex-shrink: 0;
-      padding: 10px;
+      margin-top: 30px; padding: 14px 10px 6px;
       text-align: center; font-size: 14px; color: #4c5060;
       display: flex; align-items: center; justify-content: center; gap: 10px;
       text-shadow: 0 1px 0 rgba(255,255,255,0.35);
