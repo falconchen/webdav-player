@@ -16,7 +16,9 @@
 | `server.js` | Express 后端：服务器配置 CRUD + WebDAV 代理（列表/流式播放） |
 | `public/index.html` | 单页前端：服务器列表 / 新建 / 文件列表 / 播放器 |
 | `public/video-poster.png` | 视频默认封面（16:9），`<video>` 的 poster 属性引用 |
+| `public/favicon.png` | 64x64 拟物化网站图标（浏览器标签页显示） |
 | `scripts/gen-poster.py` | 重新生成默认封面（依赖 python3 + Pillow） |
+| `scripts/gen-favicon.py` | 重新生成 favicon（依赖 python3 + Pillow） |
 | `Dockerfile` | 多阶段构建镜像（node:22-alpine，非 root 运行） |
 | `docker-compose.yml` | Compose 编排：3100 端口、`./data` 数据卷持久化 |
 | `servers.json` | 运行时生成的用户配置存储（**已 gitignore，勿提交**） |
