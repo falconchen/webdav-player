@@ -687,9 +687,8 @@
       const name = filePath.split('/').pop();
       const isV = isVideo(name);
       const backTo = '/browse/' + serverId + '/' + encodePath(filePath.slice(0, filePath.lastIndexOf('/')));
-      setNav('播放', '← 返回', () => navigate(backTo), 'gray');
-      // 播放页右侧已有明确的「返回目录」，隐藏左侧后退按钮避免重复
-      $navBack.classList.add('hidden');
+      // 左侧后退与其他页面一致（回上一页）；右侧「服务器」回服务器列表
+      setNav('播放', '服务器', () => navigate('/'), 'gray');
       $view.innerHTML = `
         <div class="now-playing">正在播放：<strong>${esc(name)}</strong></div>
         <div class="player-wrap${isV ? ' video-wrap' : ''}">
