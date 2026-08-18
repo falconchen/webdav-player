@@ -288,6 +288,54 @@
     .sub-item.active { background: #dce9fb; font-weight: 600; color: #1f5db8; }
     .sub-item .check { width: 16px; text-align: center; color: #1f5db8; }
 
+    /* ===== 相册查看 ===== */
+    .gallery-wrap {
+      position: fixed; inset: 0; z-index: 50;
+      background: rgba(12, 14, 20, 0.96);
+      display: flex; flex-direction: column;
+    }
+    .gallery-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25));
+    }
+    .gallery-top .g-name {
+      flex: 1; text-align: center; font-size: 14px; color: #eee;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 12px;
+    }
+    .gallery-stage {
+      flex: 1; position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+    }
+    .gallery-img {
+      max-width: 92%; max-height: 92%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+      cursor: zoom-in; user-select: none; -webkit-user-drag: none;
+      transition: transform .12s ease-out;
+      transform-origin: center center;
+    }
+    .gallery-img.zoomed { cursor: grab; }
+    .gallery-img.zoomed.dragging { cursor: grabbing; }
+    .gallery-nav-btn {
+      position: fixed; top: 50%; transform: translateY(-50%); z-index: 51;
+      width: 44px; height: 60px;
+      border: none; border-radius: 8px;
+      font-size: 28px; color: #fff; line-height: 1;
+      background: rgba(255,255,255,0.12);
+      cursor: pointer;
+    }
+    .gallery-nav-btn:hover { background: rgba(255,255,255,0.25); }
+    .gallery-nav-btn.prev { left: 8px; }
+    .gallery-nav-btn.next { right: 8px; }
+    .gallery-bottom {
+      display: flex; align-items: center; justify-content: center; gap: 18px;
+      padding: 12px 14px;
+      background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.25));
+    }
+    .gallery-bottom .g-counter { font-size: 13px; color: #cfd3da; min-width: 70px; text-align: center; }
+    .gallery-bottom .g-hint { font-size: 11px; color: #8f95a0; }
+
     /* ===== Toast（拟物通知） ===== */
     .toast {
       position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
@@ -337,8 +385,9 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const AUDIO_EXT = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'];
+    const AUDIO_EXT = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'webm'];
     const VIDEO_EXT = ['mp4', 'webm', 'mkv', 'mov', 'm4v', 'avi'];
+    const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'avif'];
 
     const $view = document.getElementById('view');
     const $toast = document.getElementById('toast');
@@ -373,6 +422,7 @@
     function isAudio(name) { return AUDIO_EXT.includes(ext(name)); }
     function isVideo(name) { return VIDEO_EXT.includes(ext(name)); }
     function isMedia(name) { return isAudio(name) || isVideo(name); }
+    function isImage(name) { return IMAGE_EXT.includes(ext(name)); }
     function fmtSize(n) {
       if (!n) return '';
       const u = ['B', 'KB', 'MB', 'GB'];
@@ -409,9 +459,9 @@
       const parts = window.location.pathname.split('/').filter(Boolean); // 去掉首尾空段
       if (parts.length === 0) return { name: 'home' };
       if (parts[0] === 'new') return { name: 'new' };
-      if ((parts[0] === 'browse' || parts[0] === 'play') && parts.length >= 2) {
+      if ((parts[0] === 'browse' || parts[0] === 'play' || parts[0] === 'gallery') && parts.length >= 2) {
         return {
-          name: parts[0], // 'browse' | 'play'
+          name: parts[0], // 'browse' | 'play' | 'gallery'
           id: parts[1],
           path: decodePath(parts.slice(2).join('/')),
         };
@@ -429,12 +479,15 @@
 
     // 根据当前路由渲染
     async function render() {
+      // 离开相册时清理全局监听
+      if (_gallery && _gallery._cleanup) _gallery._cleanup();
       const route = parseRoute();
       // 后退按钮：最早一页（服务器列表）时隐藏，其余页面显示
       $navBack.classList.toggle('hidden', route.name === 'home');
       if (route.name === 'new') { showNewServer(); return; }
       if (route.name === 'browse') { await renderFileList(route.id, route.path); return; }
       if (route.name === 'play') { playFile(route.id, route.path); return; }
+      if (route.name === 'gallery') { openGallery(route.id, route.path); return; }
       await renderServerList();
     }
 
@@ -562,16 +615,19 @@
       const itemCells = items.map(it => {
         const isDir = it.type === 'directory';
         const media = isMedia(it.name);
-        const icon = isDir ? '📁' : isAudio(it.name) ? '🎵' : isVideo(it.name) ? '🎬' : '📄';
-        const iconCls = isDir ? 'icon-green' : isVideo(it.name) ? 'icon-orange' : isAudio(it.name) ? 'icon-dark' : 'icon-gray';
+        const img = isImage(it.name);
+        const icon = isDir ? '📁' : img ? '🖼️' : isAudio(it.name) ? '🎵' : isVideo(it.name) ? '🎬' : '📄';
+        const iconCls = isDir ? 'icon-green' : img ? 'icon-blue' : isVideo(it.name) ? 'icon-orange' : isAudio(it.name) ? 'icon-dark' : 'icon-gray';
         let click = '';
         if (isDir) {
           click = `onclick="navigate('/browse/${serverId}/${encodePath(it.path)}')"`;
+        } else if (img) {
+          click = `onclick="navigate('/gallery/${serverId}/${encodePath(it.path)}')"`;
         } else if (media) {
           click = `onclick="navigate('/play/${serverId}/${encodePath(it.path)}')"`;
         }
         const dateStr = it.mtime ? fmtDate(it.mtime) : '';
-        const metaText = `${isDir ? '目录' : fmtSize(it.size)}${dateStr ? ' · ' + dateStr : ''}${(!isDir && media) ? ' ▶' : ''}`;
+        const metaText = `${isDir ? '目录' : fmtSize(it.size)}${dateStr ? ' · ' + dateStr : ''}${(!isDir && media || img) ? ' ▶' : ''}`;
         return `
         <div class="cell" ${click}>
           <div class="row">
@@ -645,7 +701,26 @@
       `;
       _subTracks = [];
       _activeSub = -1;
-      if (isV) loadSubtitles(serverId, filePath);
+      if (isV) {
+        // webm/mkv 等可能是纯音频：加载后若无视频轨，自动切换为音频播放器
+        const video = document.getElementById('playerVideo');
+        if (video) {
+          video.addEventListener('loadedmetadata', () => {
+            if (video.videoWidth === 0 && video.videoHeight === 0) {
+              const wrap = video.closest('.player-wrap');
+              if (!wrap) return;
+              wrap.classList.remove('video-wrap');
+              wrap.innerHTML = '';
+              const audio = document.createElement('audio');
+              audio.controls = true;
+              audio.autoplay = true;
+              audio.src = url;
+              wrap.appendChild(audio);
+            }
+          });
+        }
+        loadSubtitles(serverId, filePath);
+      }
     }
 
     // 扫描视频同目录的字幕文件，动态添加 <track> 与字幕菜单
@@ -742,6 +817,199 @@
       renderSubMenuCheck();
       const m = document.getElementById('subMenu');
       if (m) m.classList.add('hidden');
+    }
+
+    // ===== View: gallery（图片相册） =====
+    let _gallery = null; // { serverId, imgs:[], idx, scale, tx, ty }
+
+    // 列出同目录图片并打开相册
+    async function openGallery(serverId, filePath) {
+      const dir = filePath.slice(0, filePath.lastIndexOf('/')) || '/';
+      let data;
+      try { data = await api(`/api/servers/${serverId}/list?path=${encodeURIComponent(dir)}`); }
+      catch (e) { toast(e.message); return; }
+
+      const imgs = (data.items || [])
+        .filter(i => i.type === 'file' && isImage(i.name))
+        .sort((a, b) => {
+          const ta = a.mtime ? new Date(a.mtime).getTime() : -Infinity;
+          const tb = b.mtime ? new Date(b.mtime).getTime() : -Infinity;
+          return tb - ta;
+        });
+      if (!imgs.length) { toast('目录中没有图片'); return; }
+
+      let idx = imgs.findIndex(i => i.path === filePath || i.name === filePath.split('/').pop());
+      if (idx === -1) idx = 0;
+
+      _gallery = { serverId, imgs, idx, scale: 1, tx: 0, ty: 0 };
+      renderGallery();
+    }
+
+    function galleryUrl(path) {
+      return `/api/servers/${_gallery.serverId}/stream?path=${encodeURIComponent(path)}`;
+    }
+
+    // 渲染当前图片（含缩放/平移状态）
+    function renderGallery() {
+      const g = _gallery;
+      if (!g) return;
+      const item = g.imgs[g.idx];
+      const name = item.name;
+      setNav('相册', '← 返回', () => {
+        navigate('/browse/' + g.serverId + '/' + encodePath(item.path.slice(0, item.path.lastIndexOf('/'))));
+      }, 'gray');
+      $navBack.classList.add('hidden');
+
+      $view.innerHTML = `
+        <div class="gallery-wrap">
+          <div class="gallery-top">
+            <span class="g-name">${esc(name)}</span>
+          </div>
+          <div class="gallery-stage" id="galleryStage">
+            <img class="gallery-img" id="galleryImg" src="${galleryUrl(item.path)}" alt="${esc(name)}" draggable="false">
+          </div>
+          <button class="gallery-nav-btn prev" onclick="galleryStep(-1)">‹</button>
+          <button class="gallery-nav-btn next" onclick="galleryStep(1)">›</button>
+          <div class="gallery-bottom">
+            <button class="btn small gray" onclick="galleryZoom(-0.5)">－ 缩小</button>
+            <span class="g-counter">${g.idx + 1} / ${g.imgs.length}</span>
+            <button class="btn small gray" onclick="galleryZoom(0.5)">＋ 放大</button>
+          </div>
+        </div>
+      `;
+      bindGalleryEvents();
+      updateGalleryTransform();
+    }
+
+    function updateGalleryTransform() {
+      const img = document.getElementById('galleryImg');
+      if (!img) return;
+      const g = _gallery;
+      img.style.transform = `translate(${g.tx}px, ${g.ty}px) scale(${g.scale})`;
+      img.classList.toggle('zoomed', g.scale > 1);
+    }
+
+    // 缩放：delta > 0 放大
+    function galleryZoom(delta) {
+      const g = _gallery;
+      g.scale = Math.min(5, Math.max(1, g.scale + delta));
+      // 缩放时尽量保持中心
+      g.tx = 0; g.ty = 0;
+      updateGalleryTransform();
+    }
+
+    // 上一张 / 下一张
+    function galleryStep(dir) {
+      const g = _gallery;
+      if (g.imgs.length <= 1) return;
+      g.idx = (g.idx + dir + g.imgs.length) % g.imgs.length;
+      g.scale = 1; g.tx = 0; g.ty = 0;
+      renderGallery();
+    }
+
+    function bindGalleryEvents() {
+      const stage = document.getElementById('galleryStage');
+      const img = document.getElementById('galleryImg');
+      if (!stage || !img) return;
+
+      // 滚轮缩放（桌面）
+      const onWheel = (e) => {
+        e.preventDefault();
+        galleryZoom(e.deltaY < 0 ? 0.2 : -0.2);
+      };
+      // 双击切换 1x / 2x
+      const onDblClick = (e) => {
+        e.preventDefault();
+        const g = _gallery;
+        g.scale = g.scale > 1 ? 1 : 2;
+        g.tx = 0; g.ty = 0;
+        updateGalleryTransform();
+      };
+
+      // 拖拽平移（缩放后）
+      let drag = null;
+      const onDown = (e) => {
+        if (_gallery.scale <= 1) return;
+        drag = { x: e.clientX, y: e.clientY, tx: _gallery.tx, ty: _gallery.ty };
+        img.classList.add('dragging');
+      };
+      const onMove = (e) => {
+        if (!drag) return;
+        _gallery.tx = drag.tx + (e.clientX - drag.x);
+        _gallery.ty = drag.ty + (e.clientY - drag.y);
+        updateGalleryTransform();
+      };
+      const onUp = () => {
+        drag = null;
+        img.classList.remove('dragging');
+      };
+
+      stage.addEventListener('wheel', onWheel, { passive: false });
+      stage.addEventListener('dblclick', onDblClick);
+      stage.addEventListener('mousedown', onDown);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+
+      // 触摸：双指捏合缩放 + 单指滑动切换
+      let pinch = null;
+      let touchStart = null;
+      const onTouchStart = (e) => {
+        if (e.touches.length === 2) {
+          pinch = { d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), s: _gallery.scale };
+          touchStart = null;
+        } else if (e.touches.length === 1) {
+          touchStart = { x: e.touches[0].clientX, t: Date.now() };
+        }
+      };
+      const onTouchMove = (e) => {
+        if (pinch && e.touches.length === 2) {
+          const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+          _gallery.scale = Math.min(5, Math.max(1, pinch.s * (d / pinch.d)));
+          _gallery.tx = 0; _gallery.ty = 0;
+          updateGalleryTransform();
+          e.preventDefault();
+        }
+      };
+      const onTouchEnd = (e) => {
+        if (pinch && e.touches.length < 2) pinch = null;
+        else if (touchStart && e.changedTouches.length === 1 && e.touches.length === 0) {
+          // 快速滑动（<300ms 且横向位移>40px）切换图片
+          const dx = e.changedTouches[0].clientX - touchStart.x;
+          const dt = Date.now() - touchStart.t;
+          if (dt < 300 && Math.abs(dx) > 40) galleryStep(dx < 0 ? 1 : -1);
+          touchStart = null;
+        }
+      };
+      stage.addEventListener('touchstart', onTouchStart, { passive: false });
+      stage.addEventListener('touchmove', onTouchMove, { passive: false });
+      stage.addEventListener('touchend', onTouchEnd);
+
+      // 键盘 ← / → 切换，+ / - 缩放，Esc 返回
+      const onKey = (e) => {
+        if (e.key === 'ArrowLeft') galleryStep(-1);
+        else if (e.key === 'ArrowRight') galleryStep(1);
+        else if (e.key === '+' || e.key === '=') galleryZoom(0.25);
+        else if (e.key === '-') galleryZoom(-0.25);
+        else if (e.key === 'Escape') {
+          const item = _gallery.imgs[_gallery.idx];
+          navigate('/browse/' + _gallery.serverId + '/' + encodePath(item.path.slice(0, item.path.lastIndexOf('/'))));
+        }
+      };
+      window.addEventListener('keydown', onKey);
+
+      // 清理：离开相册时移除全局监听
+      _gallery._cleanup = () => {
+        stage.removeEventListener('wheel', onWheel);
+        stage.removeEventListener('dblclick', onDblClick);
+        stage.removeEventListener('mousedown', onDown);
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        stage.removeEventListener('touchstart', onTouchStart);
+        stage.removeEventListener('touchmove', onTouchMove);
+        stage.removeEventListener('touchend', onTouchEnd);
+        window.removeEventListener('keydown', onKey);
+        _gallery = null;
+      };
     }
 
     // ===== helpers =====

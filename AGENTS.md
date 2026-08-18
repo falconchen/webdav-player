@@ -30,6 +30,7 @@
 - **代理式**：浏览器 → 本服务 → 用户 WebDAV 服务器，数据经本服务中转
 - **流式播放**：`/api/servers/:id/stream` 通过 `webdav` 的 `createReadStream` 转发，支持 HTTP Range（206），实现进度拖动与断点续播
 - **字幕代理**：`/api/servers/:id/subtitle` 代理 WebDAV 上的 `.srt`/`.vtt`，SRT 转 WebVTT 后供 `<track>` 使用；前端自动扫描视频同目录字幕文件（语言从文件名推断，如 `movie.zh-CN.srt`）
+- **图片相册**：`/gallery/:id/路径` 路由打开全屏相册（`openGallery`），复用 `/stream` 加载图片；缩放（滚轮/双击/按钮/双指捏合）、切换（按钮/键盘/滑动），全局监听在离开相册时由 `render()` 清理
 - **配置存储**：`loadServers()` / `saveServers()` 读写 `servers.json`，密码明文存储
 
 ## 开发约定
