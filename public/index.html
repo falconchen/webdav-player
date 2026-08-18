@@ -52,6 +52,7 @@
 
     /* ===== 高光导航栏（通栏，紧贴浏览器左右端，固定在视口顶部） ===== */
     .navbar {
+      position: relative; /* ::after 高光的定位上下文 */
       flex-shrink: 0;
       z-index: 10;
       width: 100%;
