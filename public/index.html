@@ -308,7 +308,22 @@
       display: flex; align-items: center; justify-content: center;
       touch-action: none;
     }
+    /* 加载骨架：居中圆角灰块 + 微光扫动 */
+    .gallery-skeleton {
+      position: absolute; z-index: 1;
+      width: 70%; max-width: 560px;
+      height: 70%; max-height: 420px;
+      border-radius: 10px;
+      background: linear-gradient(100deg, #23262e 30%, #2e323c 50%, #23262e 70%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.4s linear infinite;
+    }
+    @keyframes skeleton-shimmer {
+      from { background-position: 180% 0; }
+      to { background-position: -80% 0; }
+    }
     .gallery-img {
+      position: relative; z-index: 2;
       max-width: 92%; max-height: 92%;
       box-shadow: 0 4px 24px rgba(0,0,0,0.6);
       cursor: zoom-in; user-select: none; -webkit-user-drag: none;
@@ -859,12 +874,17 @@
       }, 'gray');
       $navBack.classList.add('hidden');
 
+      // 切换图片时同步地址栏 URL（replaceState，不产生额外历史）
+      const urlPath = '/gallery/' + g.serverId + '/' + encodePath(item.path);
+      if (window.location.pathname !== urlPath) history.replaceState({}, '', urlPath);
+
       $view.innerHTML = `
         <div class="gallery-wrap">
           <div class="gallery-top">
             <span class="g-name">${esc(name)}</span>
           </div>
           <div class="gallery-stage" id="galleryStage">
+            <div class="gallery-skeleton" id="gallerySkeleton"></div>
             <img class="gallery-img" id="galleryImg" src="${galleryUrl(item.path)}" alt="${esc(name)}" draggable="false">
           </div>
           <button class="gallery-nav-btn prev" onclick="galleryStep(-1)">‹</button>
@@ -876,6 +896,21 @@
           </div>
         </div>
       `;
+
+      // 图片加载完成（或失败/来自缓存）后隐藏骨架
+      const img = document.getElementById('galleryImg');
+      const sk = document.getElementById('gallerySkeleton');
+      const hideSkeleton = () => { if (sk) sk.style.display = 'none'; };
+      if (img) {
+        if (img.complete && img.naturalWidth > 0) hideSkeleton();
+        else {
+          img.addEventListener('load', hideSkeleton);
+          img.addEventListener('error', hideSkeleton);
+        }
+      } else if (sk) {
+        sk.style.display = 'none';
+      }
+
       bindGalleryEvents();
       updateGalleryTransform();
     }
