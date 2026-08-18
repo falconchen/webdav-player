@@ -17,6 +17,7 @@
 | `public/index.html` | 单页前端：服务器列表 / 新建 / 文件列表 / 播放器 |
 | `public/video-poster.png` | 视频默认封面（16:9），`<video>` 的 poster 属性引用 |
 | `public/favicon.png` | 64x64 拟物化网站图标（浏览器标签页显示） |
+| `public/bg.webp` | 页面背景图（320x320，暖杏色），body 固定覆盖 |
 | `scripts/gen-poster.py` | 重新生成默认封面（依赖 python3 + Pillow） |
 | `scripts/gen-favicon.py` | 重新生成 favicon（依赖 python3 + Pillow） |
 | `Dockerfile` | 多阶段构建镜像（node:22-alpine，非 root 运行） |
