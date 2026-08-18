@@ -869,10 +869,8 @@
       if (!g) return;
       const item = g.imgs[g.idx];
       const name = item.name;
-      setNav('相册', '← 返回', () => {
-        navigate('/browse/' + g.serverId + '/' + encodePath(item.path.slice(0, item.path.lastIndexOf('/'))));
-      }, 'gray');
-      $navBack.classList.add('hidden');
+      // 与播放页一致：左侧后退（返回上一页），右侧「服务器」回服务器列表
+      setNav('相册', '服务器', () => navigate('/'), 'gray');
 
       // 切换图片时同步地址栏 URL（replaceState，不产生额外历史）
       const urlPath = '/gallery/' + g.serverId + '/' + encodePath(item.path);
