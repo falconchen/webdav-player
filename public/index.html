@@ -317,20 +317,7 @@
       display: flex; align-items: center; justify-content: center;
       touch-action: none;
     }
-    /* 加载骨架：居中圆角灰块 + 微光扫动 */
-    .gallery-skeleton {
-      position: absolute; z-index: 1;
-      width: 70%; max-width: 560px;
-      height: 70%; max-height: 420px;
-      border-radius: 10px;
-      background: linear-gradient(100deg, #23262e 30%, #2e323c 50%, #23262e 70%);
-      background-size: 200% 100%;
-      animation: skeleton-shimmer 1.4s linear infinite;
-    }
-    @keyframes skeleton-shimmer {
-      from { background-position: 180% 0; }
-      to { background-position: -80% 0; }
-    }
+    /* 加载占位图（img-loading.png / img-error.png 过渡） */
     .gallery-img {
       position: relative; z-index: 2;
       max-width: 92%; max-height: 92%;
@@ -894,8 +881,7 @@
             <span class="g-name">${esc(name)}</span>
           </div>
           <div class="gallery-stage" id="galleryStage">
-            <div class="gallery-skeleton" id="gallerySkeleton"></div>
-            <img class="gallery-img" id="galleryImg" src="${galleryUrl(item.path)}" alt="${esc(name)}" draggable="false">
+            <img class="gallery-img" id="galleryImg" src="/img-loading.png" alt="${esc(name)}" draggable="false">
           </div>
           <button class="gallery-nav-btn prev" onclick="galleryStep(-1)">‹</button>
           <button class="gallery-nav-btn next" onclick="galleryStep(1)">›</button>
@@ -908,18 +894,14 @@
         </div>
       `;
 
-      // 图片加载完成（或失败/来自缓存）后隐藏骨架
+      // 默认占位图过渡：先用 img-loading.png，真实图加载成功后替换；
+      // 加载失败则替换为 img-error.png
       const img = document.getElementById('galleryImg');
-      const sk = document.getElementById('gallerySkeleton');
-      const hideSkeleton = () => { if (sk) sk.style.display = 'none'; };
       if (img) {
-        if (img.complete && img.naturalWidth > 0) hideSkeleton();
-        else {
-          img.addEventListener('load', hideSkeleton);
-          img.addEventListener('error', hideSkeleton);
-        }
-      } else if (sk) {
-        sk.style.display = 'none';
+        const real = new Image();
+        real.onload = () => { img.src = real.src; };
+        real.onerror = () => { img.src = '/img-error.png'; };
+        real.src = galleryUrl(item.path);
       }
 
       bindGalleryEvents();

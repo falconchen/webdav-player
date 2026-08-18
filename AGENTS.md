@@ -18,8 +18,10 @@
 | `public/video-poster.png` | 视频默认封面（16:9），`<video>` 的 poster 属性引用 |
 | `public/favicon.png` | 64x64 拟物化网站图标（浏览器标签页显示） |
 | `public/bg.webp` | 页面背景图（320x320，暖杏色），body 固定覆盖 |
+| `public/img-loading.png` / `public/img-error.png` | 相册图片加载中/加载失败占位图 |
 | `scripts/gen-poster.py` | 重新生成默认封面（依赖 python3 + Pillow） |
 | `scripts/gen-favicon.py` | 重新生成 favicon（依赖 python3 + Pillow） |
+| `scripts/gen-placeholders.py` | 重新生成相册占位图（依赖 python3 + Pillow） |
 | `Dockerfile` | 多阶段构建镜像（node:22-alpine，非 root 运行） |
 | `docker-compose.yml` | Compose 编排：3100 端口、`./data` 数据卷持久化 |
 | `servers.json` | 运行时生成的用户配置存储（**已 gitignore，勿提交**） |
