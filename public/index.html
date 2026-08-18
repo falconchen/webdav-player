@@ -317,7 +317,7 @@
       display: flex; align-items: center; justify-content: center;
       touch-action: none;
     }
-    /* 加载占位图（img-loading.png / img-error.png 过渡） */
+    /* 加载占位 GIF：加载期间固定小尺寸居中，加载完成后恢复真实图样式 */
     .gallery-img {
       position: relative; z-index: 2;
       max-width: 92%; max-height: 92%;
@@ -325,6 +325,11 @@
       cursor: zoom-in; user-select: none; -webkit-user-drag: none;
       transition: transform .12s ease-out;
       transform-origin: center center;
+    }
+    .gallery-img.loading {
+      width: 96px; height: 96px;
+      max-width: 96px; max-height: 96px;
+      box-shadow: none;
     }
     .gallery-img.zoomed { cursor: grab; }
     .gallery-img.zoomed.dragging { cursor: grabbing; }
@@ -881,7 +886,7 @@
             <span class="g-name">${esc(name)}</span>
           </div>
           <div class="gallery-stage" id="galleryStage">
-            <img class="gallery-img" id="galleryImg" src="/img-loading.png" alt="${esc(name)}" draggable="false">
+            <img class="gallery-img loading" id="galleryImg" src="/img-loading.gif" alt="${esc(name)}" draggable="false">
           </div>
           <button class="gallery-nav-btn prev" onclick="galleryStep(-1)">‹</button>
           <button class="gallery-nav-btn next" onclick="galleryStep(1)">›</button>
@@ -894,13 +899,13 @@
         </div>
       `;
 
-      // 默认占位图过渡：先用 img-loading.png，真实图加载成功后替换；
-      // 加载失败则替换为 img-error.png
+      // 默认占位图过渡：先显示旋转加载 GIF，真实图加载成功后替换并恢复尺寸；
+      // 加载失败则替换为错误占位图
       const img = document.getElementById('galleryImg');
       if (img) {
         const real = new Image();
-        real.onload = () => { img.src = real.src; };
-        real.onerror = () => { img.src = '/img-error.png'; };
+        real.onload = () => { img.src = real.src; img.classList.remove('loading'); };
+        real.onerror = () => { img.src = '/img-error.png'; img.classList.remove('loading'); };
         real.src = galleryUrl(item.path);
       }
 
