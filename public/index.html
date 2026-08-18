@@ -70,7 +70,7 @@
       font-size: 20px; font-weight: 700;
       color: #fff;
       text-shadow: 0 -1px 0 rgba(0,0,0,0.5);
-      padding: 11px 10px;
+      padding: 11px 64px; /* 左右留白，避免与两侧按钮重叠 */
       text-align: center;
     }
     .nav-btn {
@@ -320,6 +320,7 @@
 <body>
   <div class="navbar">
     <div class="nav-inner">
+      <button class="nav-btn left hidden" id="navBack" onclick="goBack()">‹ 返回</button>
       <div class="nav-title" id="navTitle">服务器</div>
       <button class="nav-btn right" id="headerAction"></button>
     </div>
@@ -337,6 +338,13 @@
     const $toast = document.getElementById('toast');
     const $headerAction = document.getElementById('headerAction');
     const $navTitle = document.getElementById('navTitle');
+    const $navBack = document.getElementById('navBack');
+
+    // 后退：仅当存在应用内历史（pushState 过的条目）时可用
+    function goBack() {
+      if (window.history.state === null) return;
+      history.back();
+    }
 
     function setNav(title, btnText, btnAction, btnClass) {
       $navTitle.textContent = title;
@@ -416,6 +424,8 @@
     // 根据当前路由渲染
     async function render() {
       const route = parseRoute();
+      // 后退按钮：最早一页（服务器列表）时隐藏，其余页面显示
+      $navBack.classList.toggle('hidden', route.name === 'home');
       if (route.name === 'new') { showNewServer(); return; }
       if (route.name === 'browse') { await renderFileList(route.id, route.path); return; }
       if (route.name === 'play') { playFile(route.id, route.path); return; }
