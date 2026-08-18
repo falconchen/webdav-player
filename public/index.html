@@ -550,7 +550,7 @@
 
     // ===== View: new server =====
     function showNewServer() {
-      setNav('新建服务器', '← 返回', () => navigate('/'), 'gray');
+      setNav('新建服务器', '🏠 服务器', () => navigate('/'), 'gray');
       $view.innerHTML = `
         <form onsubmit="submitNewServer(event)">
           <div class="group">
@@ -600,7 +600,7 @@
 
     // ===== View: file list =====
     async function renderFileList(serverId, path) {
-      setNav('文件', '← 服务器', () => navigate('/'), 'gray');
+      setNav('文件', '🏠 服务器', () => navigate('/'), 'gray');
       let data;
       try { data = await api(`/api/servers/${serverId}/list?path=${encodeURIComponent(path)}`); }
       catch (e) { $view.innerHTML = `<div class="empty"><span class="big">⚠️</span>${esc(e.message)}</div>`; return; }
@@ -704,7 +704,7 @@
       const isV = isVideo(name);
       const backTo = '/browse/' + serverId + '/' + encodePath(filePath.slice(0, filePath.lastIndexOf('/')));
       // 左侧后退与其他页面一致（回上一页）；右侧「服务器」回服务器列表
-      setNav('播放', '服务器', () => navigate('/'), 'gray');
+      setNav('播放', '🏠 服务器', () => navigate('/'), 'gray');
       $view.innerHTML = `
         <div class="now-playing">正在播放：<strong>${esc(name)}</strong></div>
         <div class="player-wrap${isV ? ' video-wrap' : ''}">
@@ -874,7 +874,7 @@
       const item = g.imgs[g.idx];
       const name = item.name;
       // 与播放页一致：左侧后退（返回上一页），右侧「服务器」回服务器列表
-      setNav('相册', '服务器', () => navigate('/'), 'gray');
+      setNav('相册', '🏠 服务器', () => navigate('/'), 'gray');
 
       // 切换图片时同步地址栏 URL（replaceState，不产生额外历史）
       const urlPath = '/gallery/' + g.serverId + '/' + encodePath(item.path);
