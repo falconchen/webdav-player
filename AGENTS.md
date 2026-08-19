@@ -30,7 +30,7 @@
 ## 架构要点
 
 - **代理式**：浏览器 → 本服务 → 用户 WebDAV 服务器，数据经本服务中转
-- **流式播放**：`/api/servers/:id/stream` 通过 `webdav` 的 `createReadStream` 转发，支持 HTTP Range（206），实现进度拖动与断点续播
+- **流式播放**：`/api/servers/:id/stream` 用 Node 内置 fetch（undici）直接代理远程文件，支持 HTTP Range（206），实现进度拖动与断点续播。**注意**：不要改回 webdav 库的 `createReadStream`——其底层 node-fetch 的 Range 头处理有 bug（带 Range 请求返回 200 全量甚至挂起），会导致播放极慢且 Safari 播放失败
 - **字幕代理**：`/api/servers/:id/subtitle` 代理 WebDAV 上的 `.srt`/`.vtt`，SRT 转 WebVTT 后供 `<track>` 使用；前端自动扫描视频同目录字幕文件（语言从文件名推断，如 `movie.zh-CN.srt`）
 - **图片相册**：`/gallery/:id/路径` 路由打开全屏相册（`openGallery`），复用 `/stream` 加载图片；缩放（滚轮/双击/按钮/双指捏合）、切换（按钮/键盘/滑动），全局监听在离开相册时由 `render()` 清理
 - **配置存储**：`loadServers()` / `saveServers()` 读写 `servers.json`，密码明文存储

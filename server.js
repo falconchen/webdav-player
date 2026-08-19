@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { Readable } = require('stream');
 const { createClient } = require('webdav');
 
 const app = express();
@@ -92,7 +93,31 @@ app.get('/api/servers/:id/list', async (req, res) => {
   }
 });
 
+// 路径编码（保留 / 分隔，其余 URL 编码），与前端 encodePath 一致
+function encodePath(p) {
+  return p.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+}
+
 // ---------- API: stream file (with Range support) ----------
+// 基于扩展名的 Content-Type（不依赖远程服务器返回的 mime，Safari 对 MP4 的
+// Content-Type 很敏感，远程常返回 application/octet-stream 导致播放失败）
+const MIME_BY_EXT = {
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mkv': 'video/x-matroska',
+  '.mov': 'video/quicktime',
+  '.avi': 'video/x-msvideo',
+  '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.oga': 'audio/ogg',
+  '.flac': 'audio/flac',
+  '.aac': 'audio/aac',
+  '.opus': 'audio/ogg',
+};
+
 app.get('/api/servers/:id/stream', async (req, res) => {
   const server = loadServers().find((s) => s.id === req.params.id);
   if (!server) return res.status(404).json({ error: '服务器不存在' });
@@ -120,9 +145,11 @@ app.get('/api/servers/:id/stream', async (req, res) => {
     }
 
     const chunkSize = end - start + 1;
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = MIME_BY_EXT[ext] || stat.mime || 'application/octet-stream';
     res.status(range ? 206 : 200);
     res.set({
-      'Content-Type': stat.mime || 'application/octet-stream',
+      'Content-Type': contentType,
       'Content-Length': chunkSize,
       'Accept-Ranges': 'bytes',
       'Content-Disposition': `inline; filename="${encodeURIComponent(path.basename(filePath))}"`,
@@ -131,12 +158,27 @@ app.get('/api/servers/:id/stream', async (req, res) => {
       res.set('Content-Range', `bytes ${start}-${end}/${totalSize}`);
     }
 
-    const stream = client.createReadStream(filePath, { start, end });
-    stream.on('error', (err) => {
+    // 直接用 Node 内置 fetch（undici）流式代理远程文件。
+    // 注意：webdav 库的 createReadStream 底层用 node-fetch，其 Range 头处理有
+    // bug（实测带 Range 请求会返回 200 全量、甚至挂起），导致每次请求都下载整个
+    // 文件——播放慢且 Safari 判定响应损坏播放失败。这里绕开它。
+    const remoteURL = server.url + '/' + encodePath(filePath);
+    const upstream = await fetch(remoteURL, {
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${server.username}:${server.password}`).toString('base64'),
+        ...(range ? { Range: `bytes=${start}-${end}` } : {}),
+      },
+    });
+    if (!upstream.ok && upstream.status !== 206) {
+      if (!res.headersSent) return res.status(502).json({ error: '远程读取失败: HTTP ' + upstream.status });
+      return res.destroy();
+    }
+    const body = Readable.fromWeb(upstream.body);
+    body.on('error', (err) => {
       if (!res.headersSent) res.status(502).json({ error: '读取文件失败: ' + err.message });
       else res.destroy();
     });
-    stream.pipe(res);
+    body.pipe(res);
   } catch (e) {
     res.status(502).json({ error: '无法读取文件: ' + (e.message || e) });
   }
