@@ -407,9 +407,12 @@
     .hidden { display: none !important; }
 
     /* ===== 响应式：平板/桌面多列布局 ===== */
+    /* 移动端：服务器列表与屏幕左右保持间隔（默认 .group 有 14px margin，
+       这里对 grid 容器兜底，防止个别浏览器 grid 项 margin 折叠失效） */
+    .group-grid { padding: 0 14px; }
     @media (min-width: 700px) {
       /* 服务器列表网格 */
-      .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+      .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 0; }
       .group-grid .group { margin: 0; }
       /* 文件列表：单栏 flex，目录与文件混排 */
       .file-columns {
