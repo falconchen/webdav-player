@@ -186,15 +186,18 @@ app.get('/api/servers/:id/stream', async (req, res) => {
 
 // ---------- API: subtitle (SRT/VTT proxy for <track>) ----------
 // SRT 时间戳 00:00:01,000 --> 00:00:02,500 转为 VTT 的 00:00:01.000 --> 00:00:02.500
+// 注入 STYLE 块：强制字幕底部居中（iOS Safari 有时默认偏右）
+const VTT_STYLE = 'STYLE\n::cue {\n  text-align: center;\n  font-size: 1.05em;\n  background: rgba(0,0,0,0.75);\n}\n\n';
+
 function srtToVtt(text) {
   let t = String(text).replace(/^\uFEFF/, '');
-  // 已是 WebVTT 则直接返回
+  // 已是 WebVTT 则直接返回（透传，不重复注入样式）
   if (/^\s*WEBVTT\b/i.test(t)) return t;
   // 去掉可能残留的序号块头、统一换行
   t = t.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   // 时间戳逗号转点号
   t = t.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
-  return 'WEBVTT\n\n' + t.trim() + '\n';
+  return 'WEBVTT\n\n' + VTT_STYLE + t.trim() + '\n';
 }
 
 app.get('/api/servers/:id/subtitle', async (req, res) => {
@@ -218,7 +221,15 @@ app.get('/api/servers/:id/subtitle', async (req, res) => {
     stream.on('data', (c) => chunks.push(c));
     stream.on('end', () => {
       let text = Buffer.concat(chunks).toString('utf8');
-      if (ext === '.srt') text = srtToVtt(text);
+      if (ext === '.srt') {
+        text = srtToVtt(text);
+      } else {
+        // 透传 .vtt：若无 STYLE 块则注入居中样式（不覆盖原有样式）
+        text = text.replace(/^\uFEFF/, '');
+        if (/^\s*WEBVTT\b/i.test(text) && !/^\s*STYLE\b/im.test(text)) {
+          text = text.replace(/^\s*WEBVTT\b[^\n]*\n/i, (m) => m + '\n' + VTT_STYLE);
+        }
+      }
       res.set('Content-Type', 'text/vtt; charset=utf-8');
       res.set('Cache-Control', 'no-cache');
       res.send(text);

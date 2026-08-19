@@ -266,6 +266,22 @@
     }
     video, audio { width: 100%; display: block; }
     video { background: #000; }
+    /* 字幕样式：强制底部居中（iOS Safari 有时默认偏右） */
+    video::cue {
+      text-align: center;
+      font-size: 1.05em;
+      line-height: 1.4;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.75);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    }
+    /* 部分 iOS 版本需要 ::cue 内联样式或增强选择器，兼容写法 */
+    video::-webkit-media-text-track-display {
+      text-align: center;
+    }
+    video::-webkit-media-text-track-container {
+      bottom: 2%;
+    }
 
     /* ===== 字幕选择 ===== */
     .subtitle-bar {
