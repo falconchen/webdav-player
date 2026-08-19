@@ -167,6 +167,10 @@
     .btn.block { display: block; width: 100%; margin-top: 14px; }
 
     .btn-holder { margin: 18px 14px 0; }
+    /* 空状态按钮：内容宽度 + 居中 */
+    .btn-holder.center {
+      display: flex; justify-content: center;
+    }
 
     /* ===== 表单 ===== */
     .form-cell { display: flex; align-items: center; border-bottom: 1px solid #e0e0e0; }
@@ -564,7 +568,7 @@
       if (!servers.length) {
         $view.innerHTML = `
           <div class="empty"><span class="big">🎵</span>还没有服务器<br>点击右上角「＋ 新建」开始</div>
-          <div class="btn-holder"><button class="btn block" onclick="navigate('/new')">＋ 新建服务器</button></div>`;
+          <div class="btn-holder center"><button class="btn" onclick="navigate('/new')">＋ 新建服务器</button></div>`;
         return;
       }
 
