@@ -735,7 +735,7 @@
         <div class="player-wrap${isV ? ' video-wrap' : ''}">
           ${isV
             ? `<video id="playerVideo" controls autoplay playsinline webkit-playsinline poster="/video-poster.png" src="${url}"></video>`
-            : `<audio id="playerAudio" controls autoplay src="${url}"></audio>`}
+            : `<audio id="playerAudio" controls autoplay playsinline webkit-playsinline src="${url}"></audio>`}
         </div>
         <div class="play-toolbar">
           <div class="subtitle-bar" id="subtitleBar"></div>
@@ -780,6 +780,8 @@
               const audio = document.createElement('audio');
               audio.controls = true;
               audio.autoplay = true;
+              audio.playsinline = true;
+              audio.webkitPlaysinline = true;
               audio.src = url;
               wrap.appendChild(audio);
               const p = audio.play();
